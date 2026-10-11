@@ -1,0 +1,10 @@
+{
+  "name": "ai-agent-system",
+  "version": "1.0.0",
+  "description": "He thong tro ly AI Da Nang",
+  "main": "main.py",
+  "scripts": {
+    "start": "python3 main.py"
+  },
+  "dependencies": {}
+}

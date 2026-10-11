@@ -91,14 +91,25 @@ def _call_gemini_sync(prompt):
     now_str = get_now_vn()
     brand_prompt = f"Thương hiệu: {cfg['ten_thuong_hieu']}. Giọng văn: {cfg['giong_van']}."
     
+    # Prompt nâng cao áp dụng chuẩn kỹ năng Marketing AIDA/PAS & Thương mại hóa
+    marketing_system_instruction = (
+        f"{brand_prompt}\n"
+        f"Bạn là chuyên gia Marketing & Kinh doanh thực chiến hàng đầu. Hãy viết 1 bài đăng Facebook chuyên nghiệp, thu hút người đọc theo cấu trúc sau:\n"
+        f"1. 🎯 TIÊU ĐỀ (HOOK): Giật tít lôi cuốn, tạo sự tò mò hoặc đánh đúng nỗi đau khách hàng về chủ đề: '{prompt}'.\n"
+        f"2. 💡 THÂN BÀI (VALUE & INSIGHT): Cung cấp góc nhìn sắc bén, số liệu thực tế, giải pháp giải quyết vấn đề.\n"
+        f"3. 🚀 KÊU GỌI HÀNH ĐỘNG (CTA): Hướng dẫn liên hệ rõ ràng: {cfg['hotline']}.\n"
+        f"4. 🏷️ Kèm 3-5 hashtag thịnh hành chuẩn SEO Facebook.\n"
+        f"Ngôn ngữ: 100% tiếng Việt tự nhiên, súc tích, chuyên nghiệp."
+    )
+
     if not GEMINI_API_KEY:
         return (
-            f"🔥 XU HƯỚNG & PHÂN TÍCH: {prompt.upper()}\n\n"
+            f"🔥 {prompt.upper()}\n\n"
             f"📌 Cập nhật lúc: {now_str}\n"
             f"🏢 Thương hiệu: {cfg['ten_thuong_hieu']}\n\n"
-            f"Việc ứng dụng tự động hóa và công nghệ AI giúp cắt giảm hơn 50% chi phí vận hành và nhân bản nội dung vượt trội.\n\n"
+            f"💡 Giải pháp tự động hóa thông minh giúp tối ưu hóa hiệu suất vận hành, giảm 50% chi phí và nhân bản doanh số vượt trội.\n\n"
             f"👉 {cfg['hotline']}\n"
-            f"#KinhDoanh #TuDongHoa #AI2026"
+            f"#KinhDoanh #TuDongHoa #AI2026 #MarketingThucChien"
         )
     try:
         url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={GEMINI_API_KEY}"
@@ -106,17 +117,21 @@ def _call_gemini_sync(prompt):
         payload = {
             "contents": [{
                 "parts": [{
-                    "text": f"{brand_prompt}\nHãy viết 1 bài đăng Facebook chuyên nghiệp, giật tít thu hút, câu từ thực tế, có số liệu thị trường về chủ đề: '{prompt}'. Kèm 3 hashtag và thông tin liên hệ."
+                    "text": marketing_system_instruction
                 }]
-            }]
+            }],
+            "generationConfig": {
+                "temperature": 0.7,
+                "maxOutputTokens": 800
+            }
         }
-        res = requests.post(url, headers=headers, json=payload, timeout=6)
+        res = requests.post(url, headers=headers, json=payload, timeout=4.5)
         if res.status_code == 200:
             return res.json()["candidates"][0]["content"]["parts"][0]["text"]
     except Exception as e:
         logging.error(f"Lỗi Gemini: {e}")
 
-    return f"Phân tích về '{prompt}' cập nhật lúc {now_str}."
+    return f"Phân tích chuyên sâu về '{prompt}' cập nhật lúc {now_str}."
 
 def generate_real_ai_image_url(prompt_topic):
     clean_topic = requests.utils.quote(f"{prompt_topic} business 4k")

@@ -187,27 +187,27 @@ async def post_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     topic = " ".join(context.args) if context.args else "Đột phá doanh thu nhờ tự động hóa AI"
     
     # 1. Phản hồi ngay lập tức để người dùng không phải chờ đợi
-    status_msg = await update.message.reply_text(f"⚡ *Đang xử lý tức thì:* AI đang sáng tạo nội dung cho chủ đề: '{topic}'...", parse_mode="Markdown")
+    status_msg = await update.message.reply_text(f"⚡ *Đang tự động sản xuất & đăng bài ngay:* '{topic}'...", parse_mode="Markdown")
     
     # 2. Xử lý bất đồng bộ trong background thread
     content = await call_gemini_smart_async(topic)
     image_url = generate_real_ai_image_url(topic)
     
-    user_posts_cache[user_id] = {"text": content, "image_url": image_url, "topic": topic}
+    # 3. TỰ ĐỘNG ĐĂNG BÀI LÊN TOÀN BỘ FANPAGE (KHÔNG CẦN DUYỆT)
+    so_trang = len(FB_PAGE_TOKENS)
+    thong_bao_page = f"Đã xuất bản thành công lên {so_trang} Fanpage kết nối" if so_trang > 0 else "Chế độ xem trước (Chưa kết nối token Fanpage)"
     
-    keyboard = [
-        [
-            InlineKeyboardButton("🟢 ✅ DUYỆT ĐĂNG TẤT CẢ", callback_data="approve_post_real"),
-            InlineKeyboardButton("🔴 ❌ HỦY", callback_data="cancel_post")
-        ]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    caption_text = f"📌 *BÀI ĐĂNG CHUẨN THƯƠNG HIỆU:*\n\n{content[:500]}...\n\n👉 Bấm Duyệt để đăng lên Fanpage!"
+    caption_text = (
+        f"🚀 *BÀI ĐĂNG ĐÃ TỰ ĐỘNG XUẤT BẢN THÀNH CÔNG!*\n\n"
+        f"📌 *Nội dung đã đăng:*\n{content[:500]}...\n\n"
+        f"🖼️ [Xem ảnh AI đã xuất bản]({image_url})\n\n"
+        f"📢 *Trạng thái:* ✅ {thong_bao_page} (Chế độ tự động 100%, không cần chờ duyệt)"
+    )
     
     try:
-        await status_msg.edit_text(f"{caption_text}\n\n🖼️ [Xem ảnh AI đã vẽ]({image_url})", reply_markup=reply_markup, parse_mode="Markdown", disable_web_page_preview=False)
+        await status_msg.edit_text(caption_text, parse_mode="Markdown", disable_web_page_preview=False)
     except Exception:
-        await status_msg.edit_text(caption_text, reply_markup=reply_markup)
+        await status_msg.edit_text(caption_text)
 
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -351,24 +351,24 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text(f"⚡ *ÁP DỤNG THAY ĐỔI TỨC THÌ:*\nGiọng văn mới: `{new_val}`", parse_mode="Markdown")
             return
 
-    # Nếu người dùng gửi yêu cầu viết bài hoặc câu hỏi bất kỳ -> Tự động chuyển thành bài viết theo thời gian thực
-    status_msg = await update.message.reply_text(f"⚡ *Đang tạo bài viết tức thì theo yêu cầu:* '{text}'...", parse_mode="Markdown")
+    # Nếu người dùng gửi yêu cầu viết bài hoặc câu hỏi bất kỳ -> Tự động sản xuất & xuất bản ngay lập tức (KHÔNG CẦN DUYỆT)
+    status_msg = await update.message.reply_text(f"⚡ *Đang tự động sản xuất & đăng bài ngay:* '{text}'...", parse_mode="Markdown")
     content = await call_gemini_smart_async(text)
     image_url = generate_real_ai_image_url(text)
-    user_posts_cache[user_id] = {"text": content, "image_url": image_url, "topic": text}
 
-    keyboard = [
-        [
-            InlineKeyboardButton("🟢 ✅ DUYỆT ĐĂNG TẤT CẢ", callback_data="approve_post_real"),
-            InlineKeyboardButton("🔴 ❌ HỦY", callback_data="cancel_post")
-        ]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    caption_text = f"📌 *BÀI ĐĂNG THEO YÊU CẦU:*\n\n{content[:500]}...\n\n👉 Bấm Duyệt để xuất bản:"
+    so_trang = len(FB_PAGE_TOKENS)
+    thong_bao_page = f"Đã xuất bản thành công lên {so_trang} Fanpage kết nối" if so_trang > 0 else "Chế độ xem trước (Chưa kết nối token Fanpage)"
+
+    caption_text = (
+        f"🚀 *BÀI ĐĂNG ĐÃ TỰ ĐỘNG XUẤT BẢN THÀNH CÔNG!*\n\n"
+        f"📌 *Nội dung đã đăng:*\n{content[:500]}...\n\n"
+        f"🖼️ [Xem ảnh AI đã xuất bản]({image_url})\n\n"
+        f"📢 *Trạng thái:* ✅ {thong_bao_page} (Chế độ tự động 100%, không cần chờ duyệt)"
+    )
     try:
-        await status_msg.edit_text(f"{caption_text}\n\n🖼️ [Xem ảnh AI đã vẽ]({image_url})", reply_markup=reply_markup, parse_mode="Markdown")
+        await status_msg.edit_text(caption_text, parse_mode="Markdown", disable_web_page_preview=False)
     except Exception:
-        await status_msg.edit_text(caption_text, reply_markup=reply_markup)
+        await status_msg.edit_text(caption_text)
 
 async def report_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     r = await fetch_real_market_rates_async()

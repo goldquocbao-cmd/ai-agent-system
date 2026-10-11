@@ -49,15 +49,19 @@ def get_now_vn():
 # Bộ nhớ đệm Cache giá thị trường trong 60 giây (Tránh nghẽn mạng)
 market_cache = {"data": None, "last_updated": 0}
 
-def fetch_real_market_rates():
+async def fetch_real_market_rates_async():
     now_ts = datetime.now().timestamp()
     if market_cache["data"] and (now_ts - market_cache["last_updated"] < 60):
         return market_cache["data"]
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(None, _fetch_real_market_rates_sync)
 
+def _fetch_real_market_rates_sync():
+    now_ts = datetime.now().timestamp()
     now_str = get_now_vn()
     btc_usd, usdt_vnd = "65,400", "25,450"
     try:
-        r = requests.get("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,tether&vs_currencies=usd,vnd", timeout=2)
+        r = requests.get("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,tether&vs_currencies=usd,vnd", timeout=1.5)
         if r.status_code == 200:
             d = r.json()
             btc_usd = f"{d.get('bitcoin', {}).get('usd', 65400):,}"
@@ -200,7 +204,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if data == "btn_post_fast":
         await query.message.reply_text("📝 *LÊN BÀI TỨC THÌ:*\nGõ: `/post [chủ đề bài viết]`\n\nVí dụ: `/post Xu hướng thị trường quý 4`", parse_mode="Markdown")
     elif data == "btn_report":
-        r = fetch_real_market_rates()
+        r = await fetch_real_market_rates_async()
         msg = f"📊 *THỊ TRƯỜNG THỰC TẾ ({r['time']}):*\n• USD/VND: `{r['usd_vnd']} đ`\n• Bitcoin: `${r['btc']}`\n• Vàng SJC: `{r['gold']}`\n• Cà phê: `{r['coffee']}`"
         await query.message.reply_text(msg, parse_mode="Markdown")
     elif data == "btn_trend":

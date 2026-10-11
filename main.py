@@ -216,8 +216,8 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     global cau_hinh
 
-    if data == "btn_post_fast":
-        await query.message.reply_text("📝 *LÊN BÀI TỨC THÌ:*\nGõ: `/post [chủ đề bài viết]`\n\nVí dụ: `/post Xu hướng thị trường quý 4`", parse_mode="Markdown")
+    if data in ["btn_post_fast", "btn_post_auto"]:
+        await query.message.reply_text("📝 *LÊN BÀI TỨC THÌ:*\nGõ: `/post [chủ đề bài viết]` hoặc nhắn tin bất kỳ chủ đề nào bạn muốn viết!\n\nVí dụ: `Xu hướng đầu tư 2026`", parse_mode="Markdown")
     elif data == "btn_report":
         r = await fetch_real_market_rates_async()
         msg = f"📊 *THỊ TRƯỜNG THỰC TẾ ({r['time']}):*\n• USD/VND: `{r['usd_vnd']} đ`\n• Bitcoin: `${r['btc']}`\n• Vàng SJC: `{r['gold']}`\n• Cà phê: `{r['coffee']}`"
@@ -370,6 +370,15 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception:
         await status_msg.edit_text(caption_text, reply_markup=reply_markup)
 
+async def report_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    r = await fetch_real_market_rates_async()
+    msg = f"📊 *THỊ TRƯỜNG THỰC TẾ ({r['time']}):*\n• USD/VND: `{r['usd_vnd']} đ`\n• Bitcoin: `${r['btc']}`\n• Vàng SJC: `{r['gold']}`\n• Cà phê: `{r['coffee']}`"
+    await update.message.reply_text(msg, parse_mode="Markdown")
+
+async def trend_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    msg = f"🎬 *VIDEO TREND HOT HÔM NAY ({get_now_vn()}):*\n\n1. 🔥 Mẹo tự động hóa kinh doanh (580k views)\n2. 📈 Xu hướng giá nông sản xuất khẩu (340k views)\n\n👉 Nhắn tin hoặc gõ `/post làm bài theo trend 1` để AI bắt tay làm ngay!"
+    await update.message.reply_text(msg, parse_mode="Markdown")
+
 def main():
     if not BOT_TOKEN:
         print("❌ Chưa có BOT_TOKEN")
@@ -379,7 +388,11 @@ def main():
     app = ApplicationBuilder().token(BOT_TOKEN).post_init(set_bot_menu).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("post", post_command))
+    app.add_handler(CommandHandler("ai", post_command))
+    app.add_handler(CommandHandler("trend", trend_command))
+    app.add_handler(CommandHandler("report", report_command))
     app.add_handler(CommandHandler("cauhinh", start))
+    app.add_handler(CommandHandler("fanpage", start))
     app.add_handler(CallbackQueryHandler(button_handler))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     

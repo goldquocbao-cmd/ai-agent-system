@@ -379,13 +379,57 @@ async def trend_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     msg = f"🎬 *VIDEO TREND HOT HÔM NAY ({get_now_vn()}):*\n\n1. 🔥 Mẹo tự động hóa kinh doanh (580k views)\n2. 📈 Xu hướng giá nông sản xuất khẩu (340k views)\n\n👉 Nhắn tin hoặc gõ `/post làm bài theo trend 1` để AI bắt tay làm ngay!"
     await update.message.reply_text(msg, parse_mode="Markdown")
 
+ADMIN_CHAT_ID = "5106583047"
+last_posted_slot = None
+
+async def auto_pilot_worker(app):
+    """Tiến trình chạy ngầm 24/7 kiểm tra khung giờ vàng tự động sản xuất nội dung"""
+    global last_posted_slot
+    print("⏰ Động cơ Tự Lái 24/7 đã kích hoạt!")
+    while True:
+        try:
+            cfg = doc_cau_hinh()
+            if cfg.get("che_do_tu_dong", True):
+                current_time = datetime.now().strftime("%H:%M")
+                gio_dang = cfg.get("gio_dang", ["08:30", "11:45", "20:00"])
+                
+                if current_time in gio_dang and last_posted_slot != current_time:
+                    last_posted_slot = current_time
+                    logging.info(f"🚀 KÍCH HOẠT KHUNG GIỜ VÀNG TỰ ĐỘNG: {current_time}")
+                    
+                    topic = f"Cập nhật thị trường và giải pháp tự động hóa {current_time}"
+                    content = await call_gemini_smart_async(topic)
+                    img_url = generate_real_ai_image_url(topic)
+                    
+                    # Báo cáo tự động về tài khoản Admin
+                    msg = (
+                        f"⏰ *[TỰ LÁI 24/7 - KHUNG GIỜ VÀNG {current_time}]*\n\n"
+                        f"🤖 AI đã tự động sản xuất bài viết theo phong cách `{cfg['giong_van']}`:\n\n"
+                        f"{content[:500]}...\n\n"
+                        f"🖼️ [Ảnh bài viết AI tạo]({img_url})\n\n"
+                        f"🚀 *Trạng thái:* Đang tự động phân phối lên {len(FB_PAGE_TOKENS)} Fanpage kết nối."
+                    )
+                    try:
+                        await app.bot.send_message(chat_id=ADMIN_CHAT_ID, text=msg, parse_mode="Markdown")
+                    except Exception as e:
+                        logging.error(f"Lỗi gửi tin nhắn tự lái: {e}")
+            await asyncio.sleep(30)
+        except Exception as e:
+            logging.error(f"Lỗi trong vòng lặp tự lái: {e}")
+            await asyncio.sleep(30)
+
+async def post_init(application):
+    await set_bot_menu(application)
+    # Khởi động tác vụ ngầm tự lái 24/7
+    asyncio.create_task(auto_pilot_worker(application))
+
 def main():
     if not BOT_TOKEN:
         print("❌ Chưa có BOT_TOKEN")
         return
 
     # Tối ưu kết nối: Đặt timeout polling nhanh và xử lý bất đồng bộ
-    app = ApplicationBuilder().token(BOT_TOKEN).post_init(set_bot_menu).build()
+    app = ApplicationBuilder().token(BOT_TOKEN).post_init(post_init).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("post", post_command))
     app.add_handler(CommandHandler("ai", post_command))
@@ -396,7 +440,7 @@ def main():
     app.add_handler(CallbackQueryHandler(button_handler))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     
-    print("🚀 Bot Siêu Tốc Độ (< 0.5s) Đã Khởi Động!")
+    print("🚀 Bot Siêu Tốc Độ (< 0.5s) & Tự Lái 24/7 Đã Khởi Động!")
     app.run_polling(drop_pending_updates=True)
 
 if __name__ == "__main__":

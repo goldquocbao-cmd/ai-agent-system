@@ -290,23 +290,27 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     text = update.message.text.strip()
     st = user_state.get(user_id)
-    global cau_hinh
+    cfg = doc_cau_hinh()
 
+    # 1. Nếu đang trong trạng thái chờ nhập cụ thể
     if st == "SET_BRAND_NAME":
-        cau_hinh["ten_thuong_hieu"] = text
-        luu_cau_hinh(cau_hinh)
+        cfg["ten_thuong_hieu"] = text
+        luu_cau_hinh(cfg)
         user_state[user_id] = None
-        await update.message.reply_text(f"✅ Đã lưu Tên Thương Hiệu: `{text}`", parse_mode="Markdown")
+        await update.message.reply_text(f"✅ Đã áp dụng tức thì Tên Thương Hiệu: `{text}`", parse_mode="Markdown")
+        return
     elif st == "SET_BRAND_TONE":
-        cau_hinh["giong_van"] = text
-        luu_cau_hinh(cau_hinh)
+        cfg["giong_van"] = text
+        luu_cau_hinh(cfg)
         user_state[user_id] = None
-        await update.message.reply_text(f"✅ Đã lưu Giọng Văn: `{text}`", parse_mode="Markdown")
+        await update.message.reply_text(f"✅ Đã áp dụng tức thì Giọng Văn: `{text}`", parse_mode="Markdown")
+        return
     elif st == "SET_BRAND_CONTACT":
-        cau_hinh["hotline"] = text
-        luu_cau_hinh(cau_hinh)
+        cfg["hotline"] = text
+        luu_cau_hinh(cfg)
         user_state[user_id] = None
-        await update.message.reply_text(f"✅ Đã lưu Hotline: `{text}`", parse_mode="Markdown")
+        await update.message.reply_text(f"✅ Đã áp dụng tức thì Hotline: `{text}`", parse_mode="Markdown")
+        return
     elif st == "WAITING_PAGE_TOKEN":
         if text.startswith("EAA") or len(text) > 20:
             user_state[user_id] = None
@@ -315,8 +319,56 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text("🎉 *KẾT NỐI FANPAGE THÀNH CÔNG!*", parse_mode="Markdown")
         else:
             await update.message.reply_text("⚠️ Mã Token chưa đúng định dạng `EAA...`. Vui lòng gửi lại!")
-    else:
-        await update.message.reply_text("💡 Gõ `/start` để mở Bảng Điều Khiển Nút Bấm hoặc gõ `/post [chủ đề]`!")
+        return
+
+    # 2. Xử lý yêu cầu thay đổi nhanh bằng Ngôn Ngữ Tự Nhiên (Zero-Code Dynamic Configuration)
+    lower_text = text.lower()
+    
+    # Phát hiện ý định đổi thương hiệu
+    if any(k in lower_text for k in ["đổi thương hiệu", "đổi tên", "thương hiệu là"]):
+        new_val = text.split(":")[-1].replace("đổi thương hiệu", "").replace("đổi tên", "").replace("thương hiệu là", "").strip()
+        if new_val:
+            cfg["ten_thuong_hieu"] = new_val
+            luu_cau_hinh(cfg)
+            await update.message.reply_text(f"⚡ *ÁP DỤNG THAY ĐỔI TỨC THÌ:*\nTên thương hiệu mới: `{new_val}`", parse_mode="Markdown")
+            return
+
+    # Phát hiện ý định đổi hotline/liên hệ
+    if any(k in lower_text for k in ["đổi hotline", "đổi sđt", "hotline là", "liên hệ là"]):
+        new_val = text.split(":")[-1].replace("đổi hotline", "").replace("đổi sđt", "").replace("hotline là", "").replace("liên hệ là", "").strip()
+        if new_val:
+            cfg["hotline"] = new_val
+            luu_cau_hinh(cfg)
+            await update.message.reply_text(f"⚡ *ÁP DỤNG THAY ĐỔI TỨC THÌ:*\nHotline/Liên hệ mới: `{new_val}`", parse_mode="Markdown")
+            return
+
+    # Phát hiện ý định đổi giọng văn
+    if any(k in lower_text for k in ["đổi giọng văn", "đổi tone", "phong cách là"]):
+        new_val = text.split(":")[-1].replace("đổi giọng văn", "").replace("đổi tone", "").replace("phong cách là", "").strip()
+        if new_val:
+            cfg["giong_van"] = new_val
+            luu_cau_hinh(cfg)
+            await update.message.reply_text(f"⚡ *ÁP DỤNG THAY ĐỔI TỨC THÌ:*\nGiọng văn mới: `{new_val}`", parse_mode="Markdown")
+            return
+
+    # Nếu người dùng gửi yêu cầu viết bài hoặc câu hỏi bất kỳ -> Tự động chuyển thành bài viết theo thời gian thực
+    status_msg = await update.message.reply_text(f"⚡ *Đang tạo bài viết tức thì theo yêu cầu:* '{text}'...", parse_mode="Markdown")
+    content = await call_gemini_smart_async(text)
+    image_url = generate_real_ai_image_url(text)
+    user_posts_cache[user_id] = {"text": content, "image_url": image_url, "topic": text}
+
+    keyboard = [
+        [
+            InlineKeyboardButton("🟢 ✅ DUYỆT ĐĂNG TẤT CẢ", callback_data="approve_post_real"),
+            InlineKeyboardButton("🔴 ❌ HỦY", callback_data="cancel_post")
+        ]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    caption_text = f"📌 *BÀI ĐĂNG THEO YÊU CẦU:*\n\n{content[:500]}...\n\n👉 Bấm Duyệt để xuất bản:"
+    try:
+        await status_msg.edit_text(f"{caption_text}\n\n🖼️ [Xem ảnh AI đã vẽ]({image_url})", reply_markup=reply_markup, parse_mode="Markdown")
+    except Exception:
+        await status_msg.edit_text(caption_text, reply_markup=reply_markup)
 
 def main():
     if not BOT_TOKEN:

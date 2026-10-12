@@ -146,8 +146,11 @@ async def set_bot_menu(application):
         BotCommand("start", "🚀 Bảng Điều Khiển Nút Bấm"),
         BotCommand("post", "📝 Tạo Bài Đăng (Ảnh + Text)"),
         BotCommand("report", "📊 Báo Cáo Thị Trường Trực Tiếp"),
+        BotCommand("trend", "🎬 Video Trend Hot Hôm Nay"),
+        BotCommand("ai", "🌐 Tạo Bài Viết AI Tức Thì"),
         BotCommand("cauhinh", "⚙️ Cài Đặt Thương Hiệu & Tự Lái"),
-        BotCommand("fanpage", "📢 Quản Lý Danh Sách Fanpage")
+        BotCommand("fanpage", "📢 Quản Lý Danh Sách Fanpage"),
+        BotCommand("trogiup", "❓ Hướng Dẫn Sử Dụng Nhanh")
     ]
     await application.bot.set_my_commands(commands)
 
@@ -423,6 +426,19 @@ async def post_init(application):
     # Khởi động tác vụ ngầm tự lái 24/7
     asyncio.create_task(auto_pilot_worker(application))
 
+async def trogiup_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    msg = (
+        f"❓ *HƯỚNG DẪN SỬ DỤNG NHANH:*\n\n"
+        f"• `/start` : Mở bảng điều khiển nút bấm nhanh\n"
+        f"• `/post [chủ đề]` : Tự động viết bài + ảnh AI và xuất bản ngay\n"
+        f"• `/report` : Xem giá USD, Bitcoin, Vàng SJC, Cà phê thời gian thực\n"
+        f"• `/trend` : Quét các xu hướng video hot 24h\n"
+        f"• `/cauhinh` : Xem và đổi tên thương hiệu, giọng văn\n"
+        f"• `/fanpage` : Quản lý và kiểm tra kết nối các Fanpage\n\n"
+        f"💡 Hoặc chỉ cần *nhắn tin trực tiếp* bất kỳ chủ đề nào, bot sẽ tự động làm bài ngay!"
+    )
+    await update.message.reply_text(msg, parse_mode="Markdown")
+
 def main():
     if not BOT_TOKEN:
         print("❌ Chưa có BOT_TOKEN")
@@ -437,6 +453,7 @@ def main():
     app.add_handler(CommandHandler("report", report_command))
     app.add_handler(CommandHandler("cauhinh", start))
     app.add_handler(CommandHandler("fanpage", start))
+    app.add_handler(CommandHandler("trogiup", trogiup_command))
     app.add_handler(CallbackQueryHandler(button_handler))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     

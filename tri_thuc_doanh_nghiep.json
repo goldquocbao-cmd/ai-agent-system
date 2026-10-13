@@ -1,0 +1,51 @@
+{
+  "thong_tin_chung": {
+    "ten_don_vi": "Hệ Thống Trợ Lý AI & Tự Động Hóa Doanh Nghiệp",
+    "nguoi_sang_lap": "Mr. Anh Đen / Doãn Quốc Hòa",
+    "hotline": "Liên hệ ngay để nhận tài liệu & tư vấn 1-1",
+    "tam_nhin": "Tiên phong ứng dụng AI Agent tự hành giúp doanh nghiệp và nhà đầu tư đột phá doanh thu 2026."
+  },
+  "danh_muc_dich_vu": [
+    {
+      "ma": "AI_MARKETING",
+      "ten": "Hệ Thống AI Agent Tự Lái Đa Kênh (Facebook / Telegram)",
+      "mo_ta": "Tự động nghiên cứu xu hướng, viết bài chuẩn Marketing AIDA/PAS, tạo ảnh AI 4K và tự động đăng bài theo khung giờ vàng 24/7.",
+      "loi_ich": "Cắt giảm 50% chi phí nhân sự, tăng độ phủ thương hiệu gấp 3 lần.",
+      "chi_phi": "Tư vấn lộ trình linh hoạt theo quy mô doanh nghiệp"
+    },
+    {
+      "ma": "TRADING_BOT",
+      "ten": "Bot Phân Tích & Cảnh Báo Giao Dịch Tài Chính (Crypto & Vàng)",
+      "mo_ta": "Kết nối dữ liệu thời gian thực từ Binance, SJC, Kitco. Phân tích chỉ số tâm lý Fear & Greed và hỗ trợ ra quyết định quản trị rủi ro.",
+      "loi_ich": "Loại bỏ yếu tố tâm lý khi đầu tư, cảnh báo điểm vào lệnh chuẩn xác.",
+      "chi_phi": "Gói cá nhân & Gói quỹ đầu tư chuyên nghiệp"
+    },
+    {
+      "ma": "COACHING_1ON1",
+      "ten": "Chuyển Giao Công Nghệ & Huấn Luyện AI Thực Chiến 1-1",
+      "mo_ta": "Cầm tay chỉ việc cài đặt, làm chủ các công cụ AI thế hệ mới (Gemini, Claude, Antigravity, MCP, Botkeep Cloud).",
+      "loi_ich": "Sở hữu hệ thống riêng tự vận hành sau 7 ngày.",
+      "chi_phi": "Kèm cặp trực tiếp đến khi vận hành thành thạo"
+    }
+  ],
+  "cau_hoi_thuong_gap": [
+    {
+      "cau_hoi": "Hệ thống AI có cần bật máy tính liên tục không?",
+      "tra_loi": "Không cần. Hệ thống được triển khai trên đám mây Botkeep Cloud 24/7, vận hành hoàn toàn tự động ngay cả khi tắt điện thoại và máy tính."
+    },
+    {
+      "cau_hoi": "Làm thế nào để kết nối Fanpage của tôi vào bot?",
+      "tra_loi": "Bạn chỉ cần gõ lệnh /fanpage trên bot Telegram, chọn 'Thêm Mã Token Fanpage' và gửi mã Page Token là hệ thống tự động kết nối ngay lập tức."
+    },
+    {
+      "cau_hoi": "Dữ liệu thị trường lấy từ nguồn nào?",
+      "tra_loi": "Dữ liệu được đối soát trực tiếp qua các API uy tín hàng đầu: Binance Global (Bitcoin), Alternative.me (Chỉ số Sợ hãi & Tham lam), ExchangeRate API (Tỷ giá USD/VND), và SJC/Kitco (Giá vàng)."
+    }
+  ],
+  "quy_trinh_trien_khai": [
+    "Bước 1: Khảo sát mục tiêu và nhu cầu kinh doanh/đầu tư.",
+    "Bước 2: Thiết lập cấu hình giọng văn thương hiệu và kết nối các kênh (Telegram, Facebook).",
+    "Bước 3: Khởi động động cơ AI Tự Lái 24/7 trên đám mây.",
+    "Bước 4: Bàn giao quyền điều khiển 100% trên điện thoại và hỗ trợ kỹ thuật dài hạn."
+  ]
+}

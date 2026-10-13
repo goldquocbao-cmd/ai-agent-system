@@ -39,6 +39,17 @@ def luu_cau_hinh(cfg):
     with open(CONFIG_FILE, "w", encoding="utf-8") as f:
         json.dump(cfg, f, ensure_ascii=False, indent=2)
 
+KNOWLEDGE_FILE = "tri_thuc_doanh_nghiep.json"
+
+def doc_tri_thuc():
+    if os.path.exists(KNOWLEDGE_FILE):
+        try:
+            with open(KNOWLEDGE_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return {}
+
 cau_hinh = doc_cau_hinh()
 user_state = {}
 user_posts_cache = {}
@@ -239,6 +250,7 @@ def generate_real_ai_image_url(prompt_topic):
 async def set_bot_menu(application):
     commands = [
         BotCommand("start", "🚀 Bảng Điều Khiển Nút Bấm"),
+        BotCommand("dichvu", "💼 Dịch Vụ & Bảng Giá AI"),
         BotCommand("post", "📝 Tạo Bài Đăng (Ảnh + Text)"),
         BotCommand("report", "📊 Báo Cáo Thị Trường Trực Tiếp"),
         BotCommand("trend", "🎬 Video Trend Hot Hôm Nay"),
@@ -268,11 +280,12 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             InlineKeyboardButton("🎬 VIDEO TREND HOT", callback_data="btn_trend")
         ],
         [
-            InlineKeyboardButton(f"⚙️ TỰ LÁI: {status_auto}", callback_data="btn_toggle_auto"),
-            InlineKeyboardButton("🏢 THƯƠNG HIỆU", callback_data="btn_brand_setting")
+            InlineKeyboardButton("💼 DỊCH VỤ & BẢNG GIÁ", callback_data="btn_services"),
+            InlineKeyboardButton("📢 QUẢN LÝ FANPAGE", callback_data="btn_list_pages")
         ],
         [
-            InlineKeyboardButton("📢 QUẢN LÝ FANPAGE", callback_data="btn_list_pages")
+            InlineKeyboardButton(f"⚙️ TỰ LÁI: {status_auto}", callback_data="btn_toggle_auto"),
+            InlineKeyboardButton("🏢 THƯƠNG HIỆU", callback_data="btn_brand_setting")
         ]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -285,6 +298,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"👉 Chạm nút bên dưới để chọn việc ngay:"
     )
     await safe_reply_text(update.message, msg, reply_markup=reply_markup)
+
 
 
 async def post_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -423,6 +437,33 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             for idx in range(1, len(FB_PAGE_TOKENS) + 1):
                 bao_cao.append(f"• Fanpage #{idx}: ✅ Đã xuất bản thành công (Chế độ công khai)")
             await query.message.reply_text("📊 *BÁO CÁO KẾT QUẢ XUẤT BẢN:*\n\n" + "\n".join(bao_cao), parse_mode="Markdown")
+    elif data == "btn_services":
+        kb = doc_tri_thuc()
+        services = kb.get("danh_muc_dich_vu", [])
+        txt_list = []
+        for idx, s in enumerate(services, 1):
+            txt_list.append(
+                f"*{idx}. {s['ten']}*\n"
+                f"• 💡 *Mô tả:* {s['mo_ta']}\n"
+                f"• 🚀 *Giá trị:* {s['loi_ich']}\n"
+                f"• 💰 *Chi phí:* `{s['chi_phi']}`\n"
+            )
+        msg = (
+            f"💼 *DANH MỤC GIẢI PHÁP & DỊCH VỤ DOANH NGHIỆP:*\n\n"
+            + "\n".join(txt_list) +
+            f"\n🎯 *Cam kết:* Vận hành đám mây 24/7, tự động 100%, bảo hành dài hạn.\n\n"
+            f"👉 *Hotline tư vấn giải pháp:* `{cau_hinh.get('hotline', 'Liên hệ ngay')}`"
+        )
+        keyboard = [
+            [InlineKeyboardButton("💬 Đăng Ký Tư Vấn 1-1", callback_data="btn_tu_van_lead")],
+            [InlineKeyboardButton("🔙 Quay Lại Menu Chính", callback_data="btn_back_home")]
+        ]
+        await safe_reply_text(query.message, msg, reply_markup=InlineKeyboardMarkup(keyboard))
+    elif data == "btn_tu_van_lead":
+        user_state[user_id] = "WAITING_LEAD_PHONE"
+        await safe_reply_text(query.message, "📞 Vui lòng gửi **Số Điện Thoại** hoặc **Nhu cầu cụ thể** của bạn vào tin nhắn này để chuyên gia liên hệ tư vấn 1-1 ngay!")
+    elif data == "btn_back_home":
+        await start(query, context)
     elif data == "cancel_post":
         await query.message.reply_text("🔴 Đã hủy bài đăng.")
     else:
@@ -464,6 +505,22 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         else:
             await update.message.reply_text("⚠️ Mã Token chưa đúng định dạng `EAA...`. Vui lòng gửi lại!")
         return
+    elif st == "WAITING_LEAD_PHONE":
+        user_state[user_id] = None
+        lead_alert = (
+            f"🔔 *[CẢNH BÁO LEAD MỚI CẦN LIÊN HỆ GẤP]*\n\n"
+            f"👤 Khách hàng: `{update.effective_user.full_name}` (@{update.effective_user.username or 'N/A'})\n"
+            f"🆔 Telegram ID: `{user_id}`\n"
+            f"📞 Thông tin để lại: `{text}`\n"
+            f"⏰ Thời gian: `{get_now_vn()}`\n\n"
+            f"👉 Vui lòng liên hệ hỗ trợ khách hàng ngay để chốt đơn!"
+        )
+        try:
+            await context.bot.send_message(chat_id=ADMIN_CHAT_ID, text=lead_alert, parse_mode="Markdown")
+        except Exception:
+            pass
+        await update.message.reply_text("🎉 Cảm ơn bạn! Chuyên gia đã tiếp nhận thông tin và sẽ liên hệ hỗ trợ bạn trong thời gian sớm nhất.")
+        return
 
     # 2. Xử lý yêu cầu thay đổi nhanh bằng Ngôn Ngữ Tự Nhiên (Zero-Code Dynamic Configuration)
     lower_text = text.lower()
@@ -494,6 +551,24 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             luu_cau_hinh(cfg)
             await update.message.reply_text(f"⚡ *ÁP DỤNG THAY ĐỔI TỨC THÌ:*\nGiọng văn mới: `{new_val}`", parse_mode="Markdown")
             return
+
+    # 3. Tra cứu cơ sở tri thức doanh nghiệp (Business Knowledge Base Lookup)
+    kb = doc_tri_thuc()
+    if any(k in lower_text for k in ["dịch vụ", "bảng giá", "giá bao nhiêu", "chi phí", "khoá học", "coaching", "hợp tác", "quy trình", "tư vấn"]):
+        services = kb.get("danh_muc_dich_vu", [])
+        txt_s = "\n\n".join([f"• *{s['ten']}*\n  └ 💡 {s['mo_ta']}\n  └ 💰 Chi phí: `{s['chi_phi']}`" for s in services])
+        ans = (
+            f"🏢 *HỆ THỐNG GIẢI PHÁP & DỊCH VỤ DOANH NGHIỆP:*\n\n"
+            f"{txt_s}\n\n"
+            f"💡 *Cam kết:* Vận hành đám mây 24/7, tự động 100%, bảo hành dài hạn.\n\n"
+            f"👉 Nhắn tin hoặc gọi `{cfg['hotline']}` để được tư vấn lộ trình riêng tối ưu nhất!"
+        )
+        keyboard = [
+            [InlineKeyboardButton("💬 Đăng Ký Tư Vấn 1-1", callback_data="btn_tu_van_lead")],
+            [InlineKeyboardButton("🔙 Quay Lại Menu Chính", callback_data="btn_back_home")]
+        ]
+        await safe_reply_text(update.message, ans, reply_markup=InlineKeyboardMarkup(keyboard))
+        return
 
     # Nếu người dùng gửi yêu cầu viết bài hoặc câu hỏi bất kỳ -> Tự động sản xuất & xuất bản ngay lập tức (KHÔNG CẦN DUYỆT)
     status_msg = await update.message.reply_text(f"⚡ *Đang tự động sản xuất & đăng bài ngay:* '{text}'...", parse_mode="Markdown")
@@ -620,10 +695,34 @@ async def cauhinh_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     await safe_reply_text(update.message, msg, reply_markup=reply_markup)
 
+async def dichvu_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    kb = doc_tri_thuc()
+    services = kb.get("danh_muc_dich_vu", [])
+    txt_list = []
+    for idx, s in enumerate(services, 1):
+        txt_list.append(
+            f"*{idx}. {s['ten']}*\n"
+            f"• 💡 *Mô tả:* {s['mo_ta']}\n"
+            f"• 🚀 *Giá trị:* {s['loi_ich']}\n"
+            f"• 💰 *Chi phí:* `{s['chi_phi']}`\n"
+        )
+    msg = (
+        f"💼 *DANH MỤC GIẢI PHÁP & DỊCH VỤ DOANH NGHIỆP:*\n\n"
+        + "\n".join(txt_list) +
+        f"\n🎯 *Cam kết:* Vận hành đám mây 24/7, tự động 100%, bảo hành & chuyển giao trọn gói.\n\n"
+        f"👉 *Hotline tư vấn giải pháp:* `{cau_hinh.get('hotline', 'Liên hệ ngay')}`"
+    )
+    keyboard = [
+        [InlineKeyboardButton("💬 Đăng Ký Nhận Tư Vấn 1-1", callback_data="btn_tu_van_lead")],
+        [InlineKeyboardButton("🔙 Bảng Điều Khiển Chính", callback_data="btn_back_home")]
+    ]
+    await safe_reply_text(update.message, msg, reply_markup=InlineKeyboardMarkup(keyboard))
+
 async def trogiup_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     msg = (
         f"❓ *HƯỚNG DẪN SỬ DỤNG NHANH:*\n\n"
         f"• `/start` : Mở bảng điều khiển nút bấm nhanh\n"
+        f"• `/dichvu` : Xem danh mục dịch vụ & bảng giá AI\n"
         f"• `/post [chủ đề]` : Tự động viết bài + ảnh AI và xuất bản ngay\n"
         f"• `/report` : Xem giá USD, Bitcoin, Vàng SJC, Cà phê thời gian thực\n"
         f"• `/trend` : Quét các xu hướng video hot 24h\n"
@@ -641,6 +740,7 @@ def main():
     # Tối ưu kết nối: Đặt timeout polling nhanh và xử lý bất đồng bộ
     app = ApplicationBuilder().token(BOT_TOKEN).post_init(post_init).build()
     app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("dichvu", dichvu_command))
     app.add_handler(CommandHandler("post", post_command))
     app.add_handler(CommandHandler("ai", post_command))
     app.add_handler(CommandHandler("trend", trend_command))

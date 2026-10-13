@@ -1,12 +1,11 @@
 {
     "schema_version": 2,
-    "commit": "ed72b1d8d8079c87e80c1453d79f305e395adc20",
-    "indexed_at": "2026-10-13T02:12:46Z",
+    "commit": "19b9c21bea605e475d5542f5f3f9d1c61f8f5164",
+    "indexed_at": "2026-10-13T02:27:11Z",
     "project": "Users-gbholding-.gemini-antigravity-scratch-ai-agent-system",
-    "nodes": 113,
-    "edges": 352,
+    "nodes": 148,
+    "edges": 423,
     "original_size": 2097152,
-    "compressed_size": 143646,
-    "compression_level": 9,
-    "reconcile_basis": "git-clean-head"
+    "compressed_size": 160761,
+    "compression_level": 9
 }

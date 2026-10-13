@@ -179,6 +179,12 @@ async def set_bot_menu(application):
     ]
     await application.bot.set_my_commands(commands)
 
+async def safe_reply_text(target, text, reply_markup=None, disable_preview=True):
+    try:
+        return await target.reply_text(text, reply_markup=reply_markup, parse_mode="Markdown", disable_web_page_preview=disable_preview)
+    except Exception:
+        return await target.reply_text(text, reply_markup=reply_markup, disable_web_page_preview=disable_preview)
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     cfg = doc_cau_hinh()
     status_auto = "🟢 Đang Bật" if cfg.get("che_do_tu_dong", True) else "🔴 Đang Tắt"
@@ -208,7 +214,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"📢 *Fanpage kết nối:* `{len(FB_PAGE_TOKENS)} Trang`\n\n"
         f"👉 Chạm nút bên dưới để chọn việc ngay:"
     )
-    await update.message.reply_text(msg, reply_markup=reply_markup, parse_mode="Markdown")
+    await safe_reply_text(update.message, msg, reply_markup=reply_markup)
+
 
 async def post_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
@@ -361,6 +368,10 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await query.message.reply_text("📊 *BÁO CÁO KẾT QUẢ XUẤT BẢN:*\n\n" + "\n".join(bao_cao), parse_mode="Markdown")
     elif data == "cancel_post":
         await query.message.reply_text("🔴 Đã hủy bài đăng.")
+    else:
+        # Tự động hỗ trợ mọi nút bấm khác hoặc từ phiên bản cũ
+        await query.message.reply_text(f"⚡ Đã ghi nhận thao tác: `{data}`.\nVui lòng gửi /start để mở bảng điều khiển mới nhất!", parse_mode="Markdown")
+
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
@@ -463,7 +474,7 @@ async def report_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"  └ 📌 *Nguồn:* `{r['oil_source']}`\n\n"
         f"✅ *Dữ liệu đã được đối soát qua API tài chính trực tiếp.*"
     )
-    await update.message.reply_text(msg, parse_mode="Markdown")
+    await safe_reply_text(update.message, msg)
 
 async def trend_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     msg = (
@@ -477,7 +488,7 @@ async def trend_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"   • Nguồn phân tích: `Google Trends Vietnam & Báo Đầu Tư`\n\n"
         f"👉 Nhắn tin hoặc gõ `/post làm bài theo trend 1` để AI tự động lên bài ngay!"
     )
-    await update.message.reply_text(msg, parse_mode="Markdown")
+    await safe_reply_text(update.message, msg)
 
 ADMIN_CHAT_ID = "5106583047"
 last_posted_slot = None
@@ -511,8 +522,8 @@ async def auto_pilot_worker(app):
                     )
                     try:
                         await app.bot.send_message(chat_id=ADMIN_CHAT_ID, text=msg, parse_mode="Markdown")
-                    except Exception as e:
-                        logging.error(f"Lỗi gửi tin nhắn tự lái: {e}")
+                    except Exception:
+                        await app.bot.send_message(chat_id=ADMIN_CHAT_ID, text=msg)
             await asyncio.sleep(30)
         except Exception as e:
             logging.error(f"Lỗi trong vòng lặp tự lái: {e}")
@@ -538,7 +549,7 @@ async def fanpage_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     msg = f"📢 *QUẢN LÝ & TRẠNG THÁI FANPAGE:*\nĐang kết nối: `{count} trang`\n\n" + "\n".join(page_info)
-    await update.message.reply_text(msg, reply_markup=reply_markup, parse_mode="Markdown")
+    await safe_reply_text(update.message, msg, reply_markup=reply_markup)
 
 async def cauhinh_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     cfg = doc_cau_hinh()
@@ -556,7 +567,7 @@ async def cauhinh_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"• Tự lái: `{'🟢 Bật' if cfg.get('che_do_tu_dong', True) else '🔴 Tắt'}`\n"
         f"• Khung giờ đăng: `{', '.join(cfg.get('gio_dang', []))}`"
     )
-    await update.message.reply_text(msg, reply_markup=reply_markup, parse_mode="Markdown")
+    await safe_reply_text(update.message, msg, reply_markup=reply_markup)
 
 async def trogiup_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     msg = (
@@ -569,7 +580,7 @@ async def trogiup_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"• `/fanpage` : Quản lý và kiểm tra kết nối các Fanpage\n\n"
         f"💡 Hoặc chỉ cần *nhắn tin trực tiếp* bất kỳ chủ đề nào, bot sẽ tự động làm bài ngay!"
     )
-    await update.message.reply_text(msg, parse_mode="Markdown")
+    await safe_reply_text(update.message, msg)
 
 def main():
     if not BOT_TOKEN:

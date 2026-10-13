@@ -59,20 +59,45 @@ async def fetch_real_market_rates_async():
 def _fetch_real_market_rates_sync():
     now_ts = datetime.now().timestamp()
     now_str = get_now_vn()
-    btc_usd, usdt_vnd = "83,900", "25,850"
-    btc_source = "Binance Global"
+    btc_usd, btc_change = "82,500", "+0.00%"
+    btc_source = "Binance Global API"
     usd_source = "Tỷ giá Liên Ngân Hàng (ExchangeRate API)"
+    usdt_vnd = "25,850"
+    fng_val = 55
+    fng_class_en = "Neutral"
+    fng_class_vn = "Trung lập"
 
-    # 1. Lấy giá Bitcoin thực tế thời gian thực từ Binance
+    # 1. Lấy giá Bitcoin & Biến động 24h thời gian thực từ Binance
     try:
-        r_binance = requests.get("https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT", timeout=2)
+        r_binance = requests.get("https://api.binance.com/api/v3/ticker/24hr?symbol=BTCUSDT", timeout=2.5)
         if r_binance.status_code == 200:
-            price_val = float(r_binance.json().get("price", 83900))
+            b_json = r_binance.json()
+            price_val = float(b_json.get("lastPrice", 82500))
+            chg_val = float(b_json.get("priceChangePercent", 0))
             btc_usd = f"{price_val:,.2f}"
+            btc_change = f"+{chg_val:.2f}%" if chg_val > 0 else f"{chg_val:.2f}%"
     except Exception:
         pass
 
-    # 2. Lấy tỷ giá USD/VND thực tế từ ExchangeRate API
+    # 2. Lấy Chỉ số Sợ hãi & Tham lam (Crypto Fear & Greed Index)
+    try:
+        r_fng = requests.get("https://api.alternative.me/fng/?limit=1", timeout=2)
+        if r_fng.status_code == 200:
+            fng_data = r_fng.json().get("data", [{}])[0]
+            fng_val = int(fng_data.get("value", 55))
+            fng_class_en = fng_data.get("value_classification", "Neutral")
+            fng_dict = {
+                "Extreme Fear": "Cực kỳ sợ hãi",
+                "Fear": "Sợ hãi",
+                "Neutral": "Trung lập",
+                "Greed": "Tham lam",
+                "Extreme Greed": "Cực kỳ tham lam"
+            }
+            fng_class_vn = fng_dict.get(fng_class_en, fng_class_en)
+    except Exception:
+        pass
+
+    # 3. Lấy tỷ giá USD/VND thực tế từ ExchangeRate API
     try:
         r_fx = requests.get("https://open.er-api.com/v6/latest/USD", timeout=2)
         if r_fx.status_code == 200:
@@ -81,10 +106,24 @@ def _fetch_real_market_rates_sync():
     except Exception:
         pass
 
+    # 4. Trí tuệ chuyên gia: Phân tích tâm lý dòng tiền & Khuyến nghị hành động
+    if fng_val >= 60:
+        market_insight = "Tâm lý thị trường đang nghiêng về **Tham lam (Greed)**. Dòng tiền đầu cơ hưng phấn nhưng đang chạm các vùng kháng cự nhạy cảm, dễ xuất hiện rung lắc rũ bỏ ngắn hạn."
+        action_advice = "Không mua đuổi giá xanh; cân nhắc chốt lời từng phần vị thế lướt sóng và nâng mốc chặn lãi (Trailing Stop) để bảo toàn thành quả."
+    elif fng_val <= 40:
+        market_insight = "Thị trường bước vào vùng **Sợ hãi (Fear)**. Áp lực bán có dấu hiệu cạn kiệt, tài sản đang chiết khấu sâu về vùng hỗ trợ định giá hấp dẫn."
+        action_advice = "Kiên nhẫn quan sát tín hiệu tạo đáy; ưu tiên tích lũy phân bổ từng phần (DCA) các tài sản có dòng tiền tốt, tuyệt đối không hoảng loạn bán tháo."
+    else:
+        market_insight = "Tâm lý thị trường ở trạng thái **Cân bằng & Tích lũy (Neutral)**. Dòng tiền thông minh đang luân chuyển tìm kiếm các cơ hội đầu tư giá trị thực tế."
+        action_advice = "Giữ danh mục ở tỷ lệ an toàn (50% tiền mặt / 50% tài sản); kiên định với kế hoạch quản trị vốn và chờ tín hiệu bứt phá rõ ràng."
+
     data = {
         "time": now_str,
         "btc": btc_usd,
+        "btc_change": btc_change,
         "btc_source": btc_source,
+        "fng_val": fng_val,
+        "fng_class_vn": fng_class_vn,
         "usd_vnd": usdt_vnd,
         "usd_source": usd_source,
         "gold": "85.2 triệu/lượng (SJC Bán ra) | $2,658/oz",
@@ -92,11 +131,42 @@ def _fetch_real_market_rates_sync():
         "coffee": "116,800 đ/kg (Robusta Lâm Đồng)",
         "coffee_source": "Hiệp hội Cà phê Ca cao VN (Giacaphe.com)",
         "oil": "$78.60/thùng (Dầu Brent)",
-        "oil_source": "Sở Giao Dịch Hàng Hóa Việt Nam (MXV)"
+        "oil_source": "Sở Giao Dịch Hàng Hóa Việt Nam (MXV)",
+        "market_insight": market_insight,
+        "action_advice": action_advice
     }
     market_cache["data"] = data
     market_cache["last_updated"] = now_ts
     return data
+
+def format_market_report(r, cfg):
+    change_emoji = "🟢" if "+" in r.get("btc_change", "+") else "🔴"
+    fng_text = f"{r.get('fng_val', 55)}/100 ({r.get('fng_class_vn', 'Trung lập')})"
+
+    return (
+        f"📊 *BẢN TIN CỐ VẤN CHIẾN LƯỢC & THỊ TRƯỜNG*\n"
+        f"⏰ *Cập nhật:* `{r['time']}`\n"
+        f"🏢 *Đơn vị:* `{cfg.get('ten_thuong_hieu', 'Đầu Tư & Kinh Doanh Thông Minh')}`\n\n"
+        f"• 🪙 *Bitcoin (BTC):* `${r['btc']}` ({change_emoji} `{r.get('btc_change', '0%')}` 24h)\n"
+        f"  └ 📌 *Nguồn:* `{r['btc_source']}`\n\n"
+        f"• 🧠 *Chỉ số Tâm Lý (Fear & Greed):* `{fng_text}`\n"
+        f"  └ 📌 *Nguồn:* `Crypto Fear & Greed Index (Alternative.me)`\n\n"
+        f"• 💵 *Tỷ giá USD/VND:* `{r['usd_vnd']} đ`\n"
+        f"  └ 📌 *Nguồn:* `{r['usd_source']}`\n\n"
+        f"• 🏆 *Vàng SJC & Thế Giới:* `{r['gold']}`\n"
+        f"  └ 📌 *Nguồn:* `{r['gold_source']}`\n\n"
+        f"• ☕ *Cà Phê Nhân Xô:* `{r['coffee']}`\n"
+        f"  └ 📌 *Nguồn:* `{r['coffee_source']}`\n\n"
+        f"• 🛢️ *Dầu Brent:* `{r['oil']}`\n"
+        f"  └ 📌 *Nguồn:* `{r['oil_source']}`\n\n"
+        f"━━━━━━━━━━━━━━━━━━━\n"
+        f"💡 *NHẬN ĐỊNH DÒNG TIỀN & XU HƯỚNG 24H:*\n"
+        f"• {r.get('market_insight', '')}\n\n"
+        f"🎯 *KHUYẾN NGHỊ HÀNH ĐỘNG HÔM NAY:*\n"
+        f"• {r.get('action_advice', '')}\n\n"
+        f"👉 *Liên hệ cố vấn chiến lược 1-1:* `{cfg.get('hotline', 'Liên hệ ngay')}`"
+    )
+
 
 async def call_gemini_smart_async(prompt):
     """Xử lý bất đồng bộ AI trong luồng riêng để phản hồi Telegram ngay lập tức"""
@@ -279,22 +349,9 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.message.reply_text(msg, parse_mode="Markdown")
     elif data == "btn_report":
         r = await fetch_real_market_rates_async()
-        msg = (
-            f"📊 *BÁO CÁO THỊ TRƯỜNG & TỶ GIÁ THỜI GIAN THỰC*\n"
-            f"⏰ *Cập nhật lúc:* `{r['time']}`\n\n"
-            f"• 🪙 *Bitcoin (BTC):* `${r['btc']}`\n"
-            f"  └ 📌 *Nguồn:* `{r['btc_source']}`\n\n"
-            f"• 💵 *Tỷ giá USD/VND:* `{r['usd_vnd']} đ`\n"
-            f"  └ 📌 *Nguồn:* `{r['usd_source']}`\n\n"
-            f"• 🏆 *Vàng SJC & Thế Giới:* `{r['gold']}`\n"
-            f"  └ 📌 *Nguồn:* `{r['gold_source']}`\n\n"
-            f"• ☕ *Cà Phê Nhân Xô:* `{r['coffee']}`\n"
-            f"  └ 📌 *Nguồn:* `{r['coffee_source']}`\n\n"
-            f"• 🛢️ *Dầu Thô:* `{r['oil']}`\n"
-            f"  └ 📌 *Nguồn:* `{r['oil_source']}`\n\n"
-            f"✅ *Dữ liệu đã được đối soát qua API tài chính trực tiếp.*"
-        )
-        await query.message.reply_text(msg, parse_mode="Markdown")
+        cfg = doc_cau_hinh()
+        msg = format_market_report(r, cfg)
+        await safe_reply_text(query.message, msg)
     elif data == "btn_trend":
         msg = (
             f"🎬 *XU HƯỚNG VIDEO & TRENDING HOT ({get_now_vn()}):*\n\n"
@@ -459,21 +516,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def report_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     r = await fetch_real_market_rates_async()
-    msg = (
-        f"📊 *BÁO CÁO THỊ TRƯỜNG & TỶ GIÁ THỜI GIAN THỰC*\n"
-        f"⏰ *Cập nhật lúc:* `{r['time']}`\n\n"
-        f"• 🪙 *Bitcoin (BTC):* `${r['btc']}`\n"
-        f"  └ 📌 *Nguồn:* `{r['btc_source']}`\n\n"
-        f"• 💵 *Tỷ giá USD/VND:* `{r['usd_vnd']} đ`\n"
-        f"  └ 📌 *Nguồn:* `{r['usd_source']}`\n\n"
-        f"• 🏆 *Vàng SJC & Thế Giới:* `{r['gold']}`\n"
-        f"  └ 📌 *Nguồn:* `{r['gold_source']}`\n\n"
-        f"• ☕ *Cà Phê Nhân Xô:* `{r['coffee']}`\n"
-        f"  └ 📌 *Nguồn:* `{r['coffee_source']}`\n\n"
-        f"• 🛢️ *Dầu Thô:* `{r['oil']}`\n"
-        f"  └ 📌 *Nguồn:* `{r['oil_source']}`\n\n"
-        f"✅ *Dữ liệu đã được đối soát qua API tài chính trực tiếp.*"
-    )
+    cfg = doc_cau_hinh()
+    msg = format_market_report(r, cfg)
     await safe_reply_text(update.message, msg)
 
 async def trend_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -508,7 +552,14 @@ async def auto_pilot_worker(app):
                     last_posted_slot = current_time
                     logging.info(f"🚀 KÍCH HOẠT KHUNG GIỜ VÀNG TỰ ĐỘNG: {current_time}")
                     
-                    topic = f"Cập nhật thị trường và giải pháp tự động hóa {current_time}"
+                    if current_time == "08:30":
+                        topic = "Bản tin thị trường sáng: Biến động Bitcoin, Tỷ giá USD, Giá Vàng và Chiến lược quản trị vốn"
+                    elif current_time == "11:45":
+                        topic = "Chiến lược kinh doanh giữa ngày: Ứng dụng AI Automation cắt giảm 50% chi phí"
+                    elif current_time == "20:00":
+                        topic = "Góc nhìn chuyên gia buổi tối: Xu hướng đầu tư và đột phá doanh thu 2026"
+                    else:
+                        topic = f"Cập nhật thị trường và giải pháp tự động hóa {current_time}"
                     content = await call_gemini_smart_async(topic)
                     img_url = generate_real_ai_image_url(topic)
                     

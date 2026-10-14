@@ -6,3 +6,14 @@ __pycache__/
 .env
 *.env
 .env.local
+
+# BẢO MẬT TUYỆT ĐỐI (DEFCON 1 SECURITY RULES)
+.env.*
+!.env.example
+*.key
+*.pem
+*.p8
+*credential*
+*secret*
+*.log
+.vercel

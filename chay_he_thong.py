@@ -13,9 +13,17 @@ from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandle
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
-BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "8618036517:AAFsy5OKxaZatkUnTnLAEj15Z7l_iJ-_rgg")
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+# AN NINH BẢO MẬT: Tuyệt đối không hardcode Token trong mã nguồn
+BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
+ADMIN_CHAT_ID = os.getenv("TELEGRAM_ALLOWED_USER_ID", "5106583047").strip()
 FB_PAGE_TOKENS = [t.strip() for t in os.getenv("FACEBOOK_PAGE_TOKENS", "").split(",") if t.strip()]
+
+def kiem_tra_admin(user_id: int) -> bool:
+    """BỨC TƯỜNG LỬA AN NINH CẤP CAO NHẤT: Chỉ cho phép Sếp điều khiển hệ thống"""
+    if not ADMIN_CHAT_ID:
+        return True
+    return str(user_id) == str(ADMIN_CHAT_ID)
 
 CONFIG_FILE = "cau_hinh_thuong_hieu.json"
 
@@ -303,6 +311,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def post_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
+    if not kiem_tra_admin(user_id):
+        await update.message.reply_text("⛔ *TRUY CẬP BỊ TỪ CHỐI:* Tính năng xuất bản nội dung chỉ dành riêng cho Quản trị viên (Sếp).", parse_mode="Markdown")
+        logging.warning(f"CẢNH BÁO AN NINH: Người dùng lạ {user_id} (@{update.effective_user.username}) cố gắng gọi /post!")
+        return
+
     topic = " ".join(context.args) if context.args else "Đột phá doanh thu nhờ tự động hóa AI"
     
     # 1. Phản hồi ngay lập tức để người dùng không phải chờ đợi
@@ -334,6 +347,12 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     data = query.data
     user_id = update.effective_user.id
     global cau_hinh
+
+    admin_buttons = ["btn_post_fast", "btn_post_auto", "btn_toggle_auto", "btn_brand_setting", "set_brand_name", "set_brand_tone", "set_brand_contact", "btn_add_page"]
+    if data in admin_buttons and not kiem_tra_admin(user_id):
+        await query.message.reply_text("⛔ *TRUY CẬP BỊ TỪ CHỐI:* Thao tác này chỉ dành riêng cho Quản trị viên (Sếp).", parse_mode="Markdown")
+        logging.warning(f"CẢNH BÁO AN NINH: Người dùng {user_id} (@{update.effective_user.username}) cố gắng bấm {data}!")
+        return
 
     if data in ["btn_post_fast", "btn_post_auto"]:
         topic = "Chiến lược bứt phá doanh thu 2026 nhờ AI Automation"
@@ -522,35 +541,34 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("🎉 Cảm ơn bạn! Chuyên gia đã tiếp nhận thông tin và sẽ liên hệ hỗ trợ bạn trong thời gian sớm nhất.")
         return
 
-    # 2. Xử lý yêu cầu thay đổi nhanh bằng Ngôn Ngữ Tự Nhiên (Zero-Code Dynamic Configuration)
-    lower_text = text.lower()
-    
-    # Phát hiện ý định đổi thương hiệu
-    if any(k in lower_text for k in ["đổi thương hiệu", "đổi tên", "thương hiệu là"]):
-        new_val = text.split(":")[-1].replace("đổi thương hiệu", "").replace("đổi tên", "").replace("thương hiệu là", "").strip()
-        if new_val:
-            cfg["ten_thuong_hieu"] = new_val
-            luu_cau_hinh(cfg)
-            await update.message.reply_text(f"⚡ *ÁP DỤNG THAY ĐỔI TỨC THÌ:*\nTên thương hiệu mới: `{new_val}`", parse_mode="Markdown")
-            return
+    # 2. Xử lý yêu cầu thay đổi nhanh bằng Ngôn Ngữ Tự Nhiên (Zero-Code Dynamic Configuration) - CHỈ CHO ADMIN
+    if kiem_tra_admin(user_id):
+        # Phát hiện ý định đổi thương hiệu
+        if any(k in lower_text for k in ["đổi thương hiệu", "đổi tên", "thương hiệu là"]):
+            new_val = text.split(":")[-1].replace("đổi thương hiệu", "").replace("đổi tên", "").replace("thương hiệu là", "").strip()
+            if new_val:
+                cfg["ten_thuong_hieu"] = new_val
+                luu_cau_hinh(cfg)
+                await update.message.reply_text(f"⚡ *ÁP DỤNG THAY ĐỔI TỨC THÌ:*\nTên thương hiệu mới: `{new_val}`", parse_mode="Markdown")
+                return
 
-    # Phát hiện ý định đổi hotline/liên hệ
-    if any(k in lower_text for k in ["đổi hotline", "đổi sđt", "hotline là", "liên hệ là"]):
-        new_val = text.split(":")[-1].replace("đổi hotline", "").replace("đổi sđt", "").replace("hotline là", "").replace("liên hệ là", "").strip()
-        if new_val:
-            cfg["hotline"] = new_val
-            luu_cau_hinh(cfg)
-            await update.message.reply_text(f"⚡ *ÁP DỤNG THAY ĐỔI TỨC THÌ:*\nHotline/Liên hệ mới: `{new_val}`", parse_mode="Markdown")
-            return
+        # Phát hiện ý định đổi hotline/liên hệ
+        if any(k in lower_text for k in ["đổi hotline", "đổi sđt", "hotline là", "liên hệ là"]):
+            new_val = text.split(":")[-1].replace("đổi hotline", "").replace("đổi sđt", "").replace("hotline là", "").replace("liên hệ là", "").strip()
+            if new_val:
+                cfg["hotline"] = new_val
+                luu_cau_hinh(cfg)
+                await update.message.reply_text(f"⚡ *ÁP DỤNG THAY ĐỔI TỨC THÌ:*\nHotline/Liên hệ mới: `{new_val}`", parse_mode="Markdown")
+                return
 
-    # Phát hiện ý định đổi giọng văn
-    if any(k in lower_text for k in ["đổi giọng văn", "đổi tone", "phong cách là"]):
-        new_val = text.split(":")[-1].replace("đổi giọng văn", "").replace("đổi tone", "").replace("phong cách là", "").strip()
-        if new_val:
-            cfg["giong_van"] = new_val
-            luu_cau_hinh(cfg)
-            await update.message.reply_text(f"⚡ *ÁP DỤNG THAY ĐỔI TỨC THÌ:*\nGiọng văn mới: `{new_val}`", parse_mode="Markdown")
-            return
+        # Phát hiện ý định đổi giọng văn
+        if any(k in lower_text for k in ["đổi giọng văn", "đổi tone", "phong cách là"]):
+            new_val = text.split(":")[-1].replace("đổi giọng văn", "").replace("đổi tone", "").replace("phong cách là", "").strip()
+            if new_val:
+                cfg["giong_van"] = new_val
+                luu_cau_hinh(cfg)
+                await update.message.reply_text(f"⚡ *ÁP DỤNG THAY ĐỔI TỨC THÌ:*\nGiọng văn mới: `{new_val}`", parse_mode="Markdown")
+                return
 
     # 3. Tra cứu cơ sở tri thức doanh nghiệp (Business Knowledge Base Lookup)
     kb = doc_tri_thuc()
@@ -570,24 +588,34 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await safe_reply_text(update.message, ans, reply_markup=InlineKeyboardMarkup(keyboard))
         return
 
-    # Nếu người dùng gửi yêu cầu viết bài hoặc câu hỏi bất kỳ -> Tự động sản xuất & xuất bản ngay lập tức (KHÔNG CẦN DUYỆT)
-    status_msg = await update.message.reply_text(f"⚡ *Đang tự động sản xuất & đăng bài ngay:* '{text}'...", parse_mode="Markdown")
-    content = await call_gemini_smart_async(text)
-    image_url = generate_real_ai_image_url(text)
+    # 4. Nếu là Admin gửi tin nhắn -> Tự động sản xuất & xuất bản ngay lập tức
+    if kiem_tra_admin(user_id):
+        status_msg = await update.message.reply_text(f"⚡ *Đang tự động sản xuất & đăng bài ngay:* '{text}'...", parse_mode="Markdown")
+        content = await call_gemini_smart_async(text)
+        image_url = generate_real_ai_image_url(text)
+        so_trang = len(FB_PAGE_TOKENS)
+        thong_bao_page = f"Đã xuất bản thành công lên {so_trang} Fanpage kết nối" if so_trang > 0 else "Chế độ xem trước (Chưa kết nối token Fanpage)"
+        caption_text = (
+            f"🚀 *BÀI ĐĂNG ĐÃ TỰ ĐỘNG XUẤT BẢN THÀNH CÔNG!*\n\n"
+            f"📌 *Nội dung đã đăng:*\n{content[:500]}...\n\n"
+            f"🖼️ [Xem ảnh AI đã xuất bản]({image_url})\n\n"
+            f"📢 *Trạng thái:* ✅ {thong_bao_page} (Chế độ tự động 100%, không cần chờ duyệt)"
+        )
+        try:
+            await status_msg.edit_text(caption_text, parse_mode="Markdown", disable_web_page_preview=False)
+        except Exception:
+            await status_msg.edit_text(caption_text)
+    else:
+        # Nếu là khách hàng lạ gửi tin nhắn -> Chào hỏi & hướng dẫn
+        await update.message.reply_text(
+            f"👋 *Xin chào bạn!*\n\n"
+            f"Tôi là Trợ lý AI của thương hiệu *{cfg['ten_thuong_hieu']}*.\n"
+            f"• Gửi /dichvu để xem danh mục giải pháp & chi phí.\n"
+            f"• Gửi /report để cập nhật tình hình thị trường tài chính.\n\n"
+            f"📞 Hotline liên hệ trực tiếp: `{cfg['hotline']}`",
+            parse_mode="Markdown"
+        )
 
-    so_trang = len(FB_PAGE_TOKENS)
-    thong_bao_page = f"Đã xuất bản thành công lên {so_trang} Fanpage kết nối" if so_trang > 0 else "Chế độ xem trước (Chưa kết nối token Fanpage)"
-
-    caption_text = (
-        f"🚀 *BÀI ĐĂNG ĐÃ TỰ ĐỘNG XUẤT BẢN THÀNH CÔNG!*\n\n"
-        f"📌 *Nội dung đã đăng:*\n{content[:500]}...\n\n"
-        f"🖼️ [Xem ảnh AI đã xuất bản]({image_url})\n\n"
-        f"📢 *Trạng thái:* ✅ {thong_bao_page} (Chế độ tự động 100%, không cần chờ duyệt)"
-    )
-    try:
-        await status_msg.edit_text(caption_text, parse_mode="Markdown", disable_web_page_preview=False)
-    except Exception:
-        await status_msg.edit_text(caption_text)
 
 async def report_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     r = await fetch_real_market_rates_async()
@@ -661,6 +689,11 @@ async def post_init(application):
     asyncio.create_task(auto_pilot_worker(application))
 
 async def fanpage_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    if not kiem_tra_admin(user_id):
+        await update.message.reply_text("⛔ *TRUY CẬP BỊ TỪ CHỐI:* Quản lý Fanpage chỉ dành riêng cho Quản trị viên (Sếp).", parse_mode="Markdown")
+        return
+
     count = len(FB_PAGE_TOKENS)
     page_info = []
     if FB_PAGE_TOKENS:
@@ -678,6 +711,11 @@ async def fanpage_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await safe_reply_text(update.message, msg, reply_markup=reply_markup)
 
 async def cauhinh_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    if not kiem_tra_admin(user_id):
+        await update.message.reply_text("⛔ *TRUY CẬP BỊ TỪ CHỐI:* Xem và chỉnh sửa cấu hình chỉ dành riêng cho Quản trị viên (Sếp).", parse_mode="Markdown")
+        return
+
     cfg = doc_cau_hinh()
     keyboard = [
         [InlineKeyboardButton("✏️ Đổi Tên Thương Hiệu", callback_data="set_brand_name")],
